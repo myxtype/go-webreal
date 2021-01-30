@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-type PushingBusiness struct {
+type PushingHandler struct {
 }
 
-func (p *PushingBusiness) OnConnect(c *webreal.Client) {
+func (p *PushingHandler) OnConnect(c *webreal.Client) {
 	c.Subscribe("hello")
 	log.Printf("New client %d", c.Id())
 }
 
-func (p *PushingBusiness) OnMessage(c *webreal.Client, msg *webreal.Message) {
+func (p *PushingHandler) OnMessage(c *webreal.Client, msg *webreal.Message) {
 	log.Printf("Client %d Message: %v", c.Id(), msg.Data)
 }
 
-func (p *PushingBusiness) OnClose(c *webreal.Client) error {
+func (p *PushingHandler) OnClose(c *webreal.Client) error {
 	defer c.UnsubscribeAll()
 	log.Printf("Client %d closed.", c.Id())
 	return nil
@@ -37,6 +37,6 @@ func main() {
 			}
 		}
 	}()
-	server := webreal.NewServer(&PushingBusiness{}, hub)
+	server := webreal.NewServer(&PushingHandler{}, hub)
 	server.Run("127.0.0.1:8080", "/ws")
 }

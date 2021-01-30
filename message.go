@@ -2,15 +2,16 @@ package webreal
 
 import "encoding/json"
 
-// 客户端发来的消息格式
+// 消息
+// 客户端需要按照此结构体发送消息到服务端
 type Message struct {
-	Type string           `json:"type"`
-	Data *json.RawMessage `json:"data"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
 func (m *Message) ReadMessageData(x interface{}) error {
 	if x == nil {
 		return nil
 	}
-	return json.Unmarshal(*m.Data, x)
+	return json.Unmarshal(m.Data, x)
 }

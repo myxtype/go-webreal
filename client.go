@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512
+	writeWait      = 10 * time.Second    // 写等待
+	pongWait       = 60 * time.Second    // 心跳等待
+	pingPeriod     = (pongWait * 9) / 10 // 心跳频率
+	maxMessageSize = 524288              // 512 kb
 )
 
 var (
@@ -26,20 +26,20 @@ type Client struct {
 	id        int64
 	writeChan chan []byte
 	conn      *websocket.Conn
-	bs        Business
-	sh        *SubscriptionHub
+	handler   Handler
+	hub       *SubscriptionHub
 	req       *http.Request
 	mu        sync.Mutex
 	channels  map[string]struct{}
 }
 
-func NewClient(conn *websocket.Conn, bs Business, sh *SubscriptionHub, req *http.Request) *Client {
+func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request) *Client {
 	return &Client{
 		id:        atomic.AddInt64(&clientId, 1),
 		writeChan: make(chan []byte, 256),
 		conn:      conn,
-		bs:        bs,
-		sh:        sh,
+		handler:   handler,
+		hub:       hub,
 		channels:  map[string]struct{}{},
 		req:       req,
 	}
@@ -47,10 +47,10 @@ func NewClient(conn *websocket.Conn, bs Business, sh *SubscriptionHub, req *http
 
 func (c *Client) Run() {
 	// 连接时回调
-	c.bs.OnConnect(c)
+	c.handler.OnConnect(c)
 	// 断开连接时的回调
 	c.conn.SetCloseHandler(func(code int, text string) error {
-		return c.bs.OnClose(c)
+		return c.handler.OnClose(c)
 	})
 	go c.reader()
 	go c.writer()
@@ -75,7 +75,7 @@ func (c *Client) reader() {
 			c.conn.Close()
 			break
 		}
-		c.bs.OnMessage(c, &msg)
+		c.handler.OnMessage(c, &msg)
 	}
 }
 
@@ -111,7 +111,7 @@ func (c *Client) Subscribe(channel string) bool {
 	if found {
 		return false
 	}
-	if c.sh.Subscribe(channel, c) {
+	if c.hub.Subscribe(channel, c) {
 		c.channels[channel] = struct{}{}
 		return true
 	}
@@ -123,7 +123,7 @@ func (c *Client) Unsubscribe(channel string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.sh.Unsubscribe(channel, c) {
+	if c.hub.Unsubscribe(channel, c) {
 		delete(c.channels, channel)
 	}
 }
@@ -134,7 +134,7 @@ func (c *Client) UnsubscribeAll() {
 	defer c.mu.Unlock()
 
 	for channel := range c.channels {
-		c.sh.Unsubscribe(channel, c)
+		c.hub.Unsubscribe(channel, c)
 	}
 }
 

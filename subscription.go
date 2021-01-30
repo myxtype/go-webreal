@@ -14,7 +14,7 @@ func NewSubscriptionHub() *SubscriptionHub {
 	}
 }
 
-// 订阅
+// 订阅主题
 func (s *SubscriptionHub) Subscribe(channel string, client *Client) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -27,7 +27,7 @@ func (s *SubscriptionHub) Subscribe(channel string, client *Client) bool {
 	return true
 }
 
-// 退订
+// 退订主题
 func (s *SubscriptionHub) Unsubscribe(channel string, client *Client) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -43,7 +43,7 @@ func (s *SubscriptionHub) Unsubscribe(channel string, client *Client) bool {
 	return true
 }
 
-// 推送消息
+// 向客户端推送主题消息
 func (s *SubscriptionHub) Publish(channel string, msg []byte) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

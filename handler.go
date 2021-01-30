@@ -1,6 +1,7 @@
 package webreal
 
-type Business interface {
+// 业务处理程序
+type Handler interface {
 	// 连接时触发
 	OnConnect(client *Client)
 	// 有新消息时

@@ -25,20 +25,18 @@ func (p *PushingBusiness) OnClose(c *webreal.Client) error {
 }
 
 func main() {
-	var (
-		sh   = webreal.NewSubscriptionHub()
-		push = PushingBusiness{}
-	)
-	go func() {
-		for {
-			tik := time.NewTicker(time.Second)
+	hub := webreal.NewSubscriptionHub()
 
+	go func() {
+		tik := time.NewTicker(time.Second)
+
+		for {
 			select {
 			case <-tik.C:
-				sh.Publish("hello", []byte("hello"))
+				hub.Publish("hello", []byte("hello"))
 			}
 		}
 	}()
-	server := webreal.NewServer(&push, sh)
+	server := webreal.NewServer(&PushingBusiness{}, hub)
 	server.Run("127.0.0.1:8080", "/ws")
 }

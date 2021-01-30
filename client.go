@@ -50,7 +50,8 @@ func (c *Client) Run() {
 	c.handler.OnConnect(c)
 	// 断开连接时的回调
 	c.conn.SetCloseHandler(func(code int, text string) error {
-		return c.handler.OnClose(c)
+		c.handler.OnClose(c)
+		return nil
 	})
 	go c.reader()
 	go c.writer()
@@ -66,13 +67,13 @@ func (c *Client) reader() {
 	for {
 		_, d, err := c.conn.ReadMessage()
 		if err != nil {
-			c.conn.Close()
+			c.Close()
 			break
 		}
 		var msg Message
 		err = json.Unmarshal(d, &msg)
 		if err != nil {
-			c.conn.Close()
+			c.Close()
 			break
 		}
 		c.handler.OnMessage(c, &msg)
@@ -88,14 +89,14 @@ func (c *Client) writer() {
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.conn.WriteMessage(websocket.TextMessage, buf)
 			if err != nil {
-				c.conn.Close()
+				c.Close()
 				return
 			}
 		case <-tik.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				c.conn.Close()
+				c.Close()
 				return
 			}
 		}
@@ -160,5 +161,6 @@ func (c *Client) Request() *http.Request {
 
 // 关闭连接对象
 func (c *Client) Close() error {
+	c.handler.OnClose(c)
 	return c.conn.Close()
 }

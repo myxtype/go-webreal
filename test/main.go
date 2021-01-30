@@ -18,10 +18,9 @@ func (p *PushingHandler) OnMessage(c *webreal.Client, msg *webreal.Message) {
 	log.Printf("Client %d Message: %v", c.Id(), msg.Data)
 }
 
-func (p *PushingHandler) OnClose(c *webreal.Client) error {
+func (p *PushingHandler) OnClose(c *webreal.Client) {
 	defer c.UnsubscribeAll()
 	log.Printf("Client %d closed.", c.Id())
-	return nil
 }
 
 func main() {

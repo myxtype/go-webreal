@@ -4,13 +4,13 @@ import "sync"
 
 // 订阅中心，存储的所有频道和客户端订阅的对应关系
 type SubscriptionHub struct {
-	subscribers map[string]map[int64]*Client
+	subscribers map[string]map[string]*Client
 	mu          sync.RWMutex
 }
 
 func NewSubscriptionHub() *SubscriptionHub {
 	return &SubscriptionHub{
-		subscribers: map[string]map[int64]*Client{},
+		subscribers: map[string]map[string]*Client{},
 	}
 }
 
@@ -20,7 +20,7 @@ func (s *SubscriptionHub) Subscribe(channel string, client *Client) bool {
 	defer s.mu.Unlock()
 
 	if _, ok := s.subscribers[channel]; !ok {
-		s.subscribers[channel] = map[int64]*Client{}
+		s.subscribers[channel] = map[string]*Client{}
 	}
 
 	s.subscribers[channel][client.id] = client

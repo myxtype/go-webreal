@@ -3,10 +3,10 @@ package webreal
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	uuid "github.com/satori/go.uuid"
 	"net/http"
 	"net/url"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -17,13 +17,9 @@ const (
 	maxMessageSize = 524288              // 512 kb
 )
 
-var (
-	clientId int64
-)
-
 // 一个连接一个Client，负责处理连接的I/O
 type Client struct {
-	id        int64
+	id        string
 	writeChan chan []byte
 	conn      *websocket.Conn
 	handler   Handler
@@ -35,7 +31,7 @@ type Client struct {
 
 func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request) *Client {
 	return &Client{
-		id:        atomic.AddInt64(&clientId, 1),
+		id:        uuid.NewV4().String(),
 		writeChan: make(chan []byte, 256),
 		conn:      conn,
 		handler:   handler,
@@ -140,7 +136,7 @@ func (c *Client) UnsubscribeAll() {
 }
 
 // 获取客户端ID
-func (c *Client) Id() int64 {
+func (c *Client) ID() string {
 	return c.id
 }
 

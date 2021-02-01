@@ -135,6 +135,26 @@ func (c *Client) UnsubscribeAll() {
 	}
 }
 
+// 获取已订阅的主题列表
+func (c *Client) Channels() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var channels []string
+	for key := range c.channels {
+		channels = append(channels, key)
+	}
+	return channels
+}
+
+// 获取已订阅长度
+func (c *Client) ChannelsLen() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return len(c.channels)
+}
+
 // 获取客户端ID
 func (c *Client) ID() string {
 	return c.id

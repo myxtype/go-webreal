@@ -157,6 +157,5 @@ func (c *Client) Request() *http.Request {
 
 // 关闭连接对象
 func (c *Client) Close() error {
-	c.handler.OnClose(c)
 	return c.conn.Close()
 }

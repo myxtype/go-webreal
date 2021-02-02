@@ -82,14 +82,8 @@ func (c *Client) writer() {
 
 	for {
 		select {
-		case buf, ok := <-c.writeChan:
+		case buf, _ := <-c.writeChan:
 			c.conn.SetWriteDeadline(time.Now().Add(c.conf.WriteWait))
-
-			if !ok {
-				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, buf); err != nil {
 				return

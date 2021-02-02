@@ -31,7 +31,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	NewClient(conn, s.handler, s.hub, r, s.conf).Run()
+	newClient(conn, s.handler, s.hub, r, s.conf).run()
 }
 
 // 使用默认的http启动监听服务

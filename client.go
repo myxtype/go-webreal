@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+var (
+	newline = []byte{'\n'}
+)
+
 // 一个连接一个Client，负责处理连接的I/O
 type Client struct {
 	id        string
@@ -23,10 +27,10 @@ type Client struct {
 	conf      *Config
 }
 
-func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request, c *Config) *Client {
+func newClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request, c *Config) *Client {
 	return &Client{
 		id:        uuid.NewV4().String(),
-		writeChan: make(chan []byte, c.WriteChanBuffer),
+		writeChan: make(chan []byte, c.WriteBufferSize),
 		conn:      conn,
 		handler:   handler,
 		hub:       hub,
@@ -36,35 +40,35 @@ func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req 
 	}
 }
 
-func (c *Client) Run() {
-	// 连接时回调
-	c.handler.OnConnect(c)
-	// 断开连接时的回调
+func (c *Client) run() {
 	c.conn.SetCloseHandler(func(code int, text string) error {
 		c.handler.OnClose(c)
 		return nil
 	})
+
 	go c.reader()
 	go c.writer()
+
+	c.handler.OnConnect(c)
 }
 
 // 读取客户端发过来的内容
 func (c *Client) reader() {
+	defer func() {
+		c.conn.Close()
+	}()
+
 	c.conn.SetReadLimit(c.conf.MaxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(c.conf.PongWait))
-	c.conn.SetPongHandler(func(string) error {
-		return c.conn.SetReadDeadline(time.Now().Add(c.conf.PongWait))
-	})
+	c.conn.SetPongHandler(func(string) error { return c.conn.SetReadDeadline(time.Now().Add(c.conf.PongWait)) })
+
 	for {
-		_, d, err := c.conn.ReadMessage()
+		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
-			c.Close()
 			break
 		}
 		var msg Message
-		err = json.Unmarshal(d, &msg)
-		if err != nil {
-			c.Close()
+		if err = json.Unmarshal(buf, &msg); err != nil {
 			break
 		}
 		c.handler.OnMessage(c, &msg)
@@ -73,21 +77,30 @@ func (c *Client) reader() {
 
 // 向客户端写入内容
 func (c *Client) writer() {
-	tik := time.NewTicker(c.conf.PingPeriod)
+	tik := time.NewTicker(c.conf.PingInterval)
+	defer func() {
+		tik.Stop()
+		c.conn.Close()
+		close(c.writeChan)
+	}()
+
 	for {
 		select {
-		case buf := <-c.writeChan:
+		case buf, ok := <-c.writeChan:
 			c.conn.SetWriteDeadline(time.Now().Add(c.conf.WriteWait))
-			err := c.conn.WriteMessage(websocket.TextMessage, buf)
-			if err != nil {
-				c.Close()
+
+			if !ok {
+				// The hub closed the channel.
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, buf); err != nil {
 				return
 			}
 		case <-tik.C:
 			c.conn.SetWriteDeadline(time.Now().Add(c.conf.WriteWait))
-			err := c.conn.WriteMessage(websocket.PingMessage, nil)
-			if err != nil {
-				c.Close()
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
@@ -158,6 +171,9 @@ func (c *Client) ID() string {
 
 // 向客户端发送数据
 func (c *Client) Write(d []byte) {
+	defer func() {
+		recover()
+	}()
 	c.writeChan <- d
 }
 
@@ -172,6 +188,7 @@ func (c *Client) Request() *http.Request {
 }
 
 // 关闭连接对象
+// 此处要关闭写通道
 func (c *Client) Close() error {
 	return c.conn.Close()
 }

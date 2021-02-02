@@ -4,8 +4,10 @@ import "sync"
 
 // 订阅中心，存储的所有频道和客户端订阅的对应关系
 type SubscriptionHub struct {
+	mu sync.RWMutex
+
+	// channel => clientId => Client
 	subscribers map[string]map[string]*Client
-	mu          sync.RWMutex
 }
 
 func NewSubscriptionHub() *SubscriptionHub {

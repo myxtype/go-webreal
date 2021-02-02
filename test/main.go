@@ -16,6 +16,7 @@ func (p *PushingHandler) OnConnect(c *webreal.Client) {
 
 func (p *PushingHandler) OnMessage(c *webreal.Client, msg *webreal.Message) {
 	log.Printf("Client %v Message: %v", c.ID(), msg.Data)
+	c.Close()
 }
 
 func (p *PushingHandler) OnClose(c *webreal.Client) {
@@ -32,7 +33,9 @@ func main() {
 		for {
 			select {
 			case <-tik.C:
-				hub.Publish("hello", []byte("hello"))
+				for i := 0; i < 10; i++ {
+					hub.Publish("hello", []byte("hello"))
+				}
 			}
 		}
 	}()

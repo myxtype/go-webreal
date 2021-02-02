@@ -9,9 +9,10 @@ type Server struct {
 	hub      *SubscriptionHub
 	handler  Handler
 	upgrader websocket.Upgrader
+	conf     *Config
 }
 
-func NewServer(handler Handler, hub *SubscriptionHub) *Server {
+func NewServer(handler Handler, hub *SubscriptionHub, c *Config) *Server {
 	return &Server{
 		hub:     hub,
 		handler: handler,
@@ -20,6 +21,7 @@ func NewServer(handler Handler, hub *SubscriptionHub) *Server {
 				return true
 			},
 		},
+		conf: c,
 	}
 }
 
@@ -29,7 +31,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	NewClient(conn, s.handler, s.hub, r).Run()
+	NewClient(conn, s.handler, s.hub, r, s.conf).Run()
 }
 
 // 使用默认的http启动监听服务

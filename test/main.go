@@ -36,6 +36,6 @@ func main() {
 			}
 		}
 	}()
-	server := webreal.NewServer(&PushingHandler{}, hub)
+	server := webreal.NewServer(&PushingHandler{}, hub, webreal.DefaultConfig())
 	server.Run("127.0.0.1:8080", "/ws")
 }

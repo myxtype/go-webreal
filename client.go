@@ -10,13 +10,6 @@ import (
 	"time"
 )
 
-const (
-	writeWait      = 10 * time.Second    // 写等待
-	pongWait       = 60 * time.Second    // 心跳等待
-	pingPeriod     = (pongWait * 9) / 10 // 心跳频率
-	maxMessageSize = 524288              // 512 kb
-)
-
 // 一个连接一个Client，负责处理连接的I/O
 type Client struct {
 	id        string
@@ -27,17 +20,19 @@ type Client struct {
 	req       *http.Request
 	mu        sync.Mutex
 	channels  map[string]struct{}
+	conf      *Config
 }
 
-func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request) *Client {
+func NewClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request, c *Config) *Client {
 	return &Client{
 		id:        uuid.NewV4().String(),
-		writeChan: make(chan []byte, 256),
+		writeChan: make(chan []byte, c.WriteChanBuffer),
 		conn:      conn,
 		handler:   handler,
 		hub:       hub,
 		channels:  map[string]struct{}{},
 		req:       req,
+		conf:      c,
 	}
 }
 
@@ -55,10 +50,10 @@ func (c *Client) Run() {
 
 // 读取客户端发过来的内容
 func (c *Client) reader() {
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadLimit(c.conf.MaxMessageSize)
+	c.conn.SetReadDeadline(time.Now().Add(c.conf.PongWait))
 	c.conn.SetPongHandler(func(string) error {
-		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return c.conn.SetReadDeadline(time.Now().Add(c.conf.PongWait))
 	})
 	for {
 		_, d, err := c.conn.ReadMessage()
@@ -78,18 +73,18 @@ func (c *Client) reader() {
 
 // 向客户端写入内容
 func (c *Client) writer() {
-	tik := time.NewTicker(pingPeriod)
+	tik := time.NewTicker(c.conf.PingPeriod)
 	for {
 		select {
 		case buf := <-c.writeChan:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.conn.SetWriteDeadline(time.Now().Add(c.conf.WriteWait))
 			err := c.conn.WriteMessage(websocket.TextMessage, buf)
 			if err != nil {
 				c.Close()
 				return
 			}
 		case <-tik.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.conn.SetWriteDeadline(time.Now().Add(c.conf.WriteWait))
 			err := c.conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
 				c.Close()
@@ -133,6 +128,7 @@ func (c *Client) UnsubscribeAll() {
 	for channel := range c.channels {
 		c.hub.Unsubscribe(channel, c)
 	}
+	c.channels = map[string]struct{}{}
 }
 
 // 获取已订阅的主题列表

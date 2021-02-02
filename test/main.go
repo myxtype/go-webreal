@@ -11,17 +11,20 @@ type PushingHandler struct {
 
 func (p *PushingHandler) OnConnect(c *webreal.Client) {
 	c.Subscribe("hello")
-	log.Printf("New client %v", c.ID())
+	log.Printf("client %v connected", c.ID())
 }
 
 func (p *PushingHandler) OnMessage(c *webreal.Client, msg *webreal.Message) {
-	log.Printf("Client %v Message: %v", c.ID(), msg.Data)
-	c.Close()
+	log.Printf("client %v Message: %v", c.ID(), msg.Data)
+
+	switch msg.Type {
+	case "close":
+		c.Close()
+	}
 }
 
 func (p *PushingHandler) OnClose(c *webreal.Client) {
-	defer c.UnsubscribeAll()
-	log.Printf("Client %v closed.", c.ID())
+	log.Printf("client %v closed.", c.ID())
 }
 
 func main() {

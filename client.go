@@ -41,11 +41,6 @@ func newClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req 
 }
 
 func (c *Client) run() {
-	c.conn.SetCloseHandler(func(code int, text string) error {
-		c.handler.OnClose(c)
-		return nil
-	})
-
 	go c.reader()
 	go c.writer()
 
@@ -55,7 +50,8 @@ func (c *Client) run() {
 // 读取客户端发过来的内容
 func (c *Client) reader() {
 	defer func() {
-		c.conn.Close()
+		c.close()
+		c.handler.OnClose(c)
 	}()
 
 	c.conn.SetReadLimit(c.conf.MaxMessageSize)
@@ -65,11 +61,11 @@ func (c *Client) reader() {
 	for {
 		_, buf, err := c.conn.ReadMessage()
 		if err != nil {
-			break
+			return
 		}
 		var msg Message
 		if err = json.Unmarshal(buf, &msg); err != nil {
-			break
+			return
 		}
 		c.handler.OnMessage(c, &msg)
 	}
@@ -79,9 +75,9 @@ func (c *Client) reader() {
 func (c *Client) writer() {
 	tik := time.NewTicker(c.conf.PingInterval)
 	defer func() {
+		c.close()
 		tik.Stop()
 		c.conn.Close()
-		close(c.writeChan)
 	}()
 
 	for {
@@ -105,6 +101,11 @@ func (c *Client) writer() {
 			}
 		}
 	}
+}
+
+// 关闭
+func (c *Client) close() {
+	c.UnsubscribeAll()
 }
 
 // 订阅
@@ -171,9 +172,6 @@ func (c *Client) ID() string {
 
 // 向客户端发送数据
 func (c *Client) Write(d []byte) {
-	defer func() {
-		recover()
-	}()
 	c.writeChan <- d
 }
 
@@ -188,7 +186,6 @@ func (c *Client) Request() *http.Request {
 }
 
 // 关闭连接对象
-// 此处要关闭写通道
 func (c *Client) Close() error {
 	return c.conn.Close()
 }

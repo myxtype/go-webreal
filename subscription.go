@@ -4,57 +4,44 @@ import "sync"
 
 // 订阅中心，存储的所有频道和客户端订阅的对应关系
 type SubscriptionHub struct {
-	mu sync.RWMutex
-
-	// channel => clientId => Client
-	subscribers map[string]map[string]*Client
+	mu       sync.Mutex
+	channels map[string]*Channel
 }
 
 func NewSubscriptionHub() *SubscriptionHub {
 	return &SubscriptionHub{
-		subscribers: map[string]map[string]*Client{},
+		channels: map[string]*Channel{},
 	}
 }
 
 // 订阅主题
-func (s *SubscriptionHub) Subscribe(channel string, client *Client) bool {
+func (s *SubscriptionHub) Subscribe(channel string, client *Client) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.subscribers[channel]; !ok {
-		s.subscribers[channel] = map[string]*Client{}
+	if _, found := s.channels[channel]; !found {
+		s.channels[channel] = NewChannel()
 	}
 
-	s.subscribers[channel][client.id] = client
-	return true
+	s.channels[channel].Add(client)
 }
 
 // 退订主题
-func (s *SubscriptionHub) Unsubscribe(channel string, client *Client) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.subscribers[channel]; !ok {
-		return false
-	}
-	if _, ok := s.subscribers[channel][client.id]; !ok {
-		return false
+func (s *SubscriptionHub) Unsubscribe(channel string, client *Client) {
+	if _, found := s.channels[channel]; !found {
+		return
 	}
 
-	delete(s.subscribers[channel], client.id)
-	return true
+	s.channels[channel].Remove(client)
 }
 
 // 向客户端推送主题消息
 func (s *SubscriptionHub) Publish(channel string, msg []byte) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if _, ok := s.subscribers[channel]; !ok {
+	if _, found := s.channels[channel]; !found {
 		return
 	}
 
-	for _, c := range s.subscribers[channel] {
+	s.channels[channel].Range(func(c *Client) {
 		c.Write(msg)
-	}
+	})
 }

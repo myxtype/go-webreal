@@ -103,19 +103,16 @@ func (c *Client) close() {
 }
 
 // 订阅
-func (c *Client) Subscribe(channel string) bool {
+func (c *Client) Subscribe(channel string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	_, found := c.channels[channel]
-	if found {
-		return false
+	if _, found := c.channels[channel]; found {
+		return
 	}
-	if c.hub.Subscribe(channel, c) {
-		c.channels[channel] = struct{}{}
-		return true
-	}
-	return false
+
+	c.hub.Subscribe(channel, c)
+	c.channels[channel] = struct{}{}
 }
 
 // 退订
@@ -123,9 +120,8 @@ func (c *Client) Unsubscribe(channel string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.hub.Unsubscribe(channel, c) {
-		delete(c.channels, channel)
-	}
+	c.hub.Unsubscribe(channel, c)
+	delete(c.channels, channel)
 }
 
 // 退订所有
@@ -137,26 +133,6 @@ func (c *Client) UnsubscribeAll() {
 		c.hub.Unsubscribe(channel, c)
 	}
 	c.channels = map[string]struct{}{}
-}
-
-// 获取已订阅的主题列表
-func (c *Client) Channels() []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	var channels []string
-	for key := range c.channels {
-		channels = append(channels, key)
-	}
-	return channels
-}
-
-// 获取已订阅长度
-func (c *Client) ChannelsLen() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return len(c.channels)
 }
 
 // 获取客户端ID

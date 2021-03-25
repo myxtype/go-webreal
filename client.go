@@ -25,6 +25,7 @@ type Client struct {
 	mu        sync.Mutex
 	channels  map[string]struct{}
 	conf      *Config
+	ctx       sync.Map
 }
 
 func newClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req *http.Request, c *Config) *Client {
@@ -37,6 +38,7 @@ func newClient(conn *websocket.Conn, handler Handler, hub *SubscriptionHub, req 
 		channels:  map[string]struct{}{},
 		req:       req,
 		conf:      c,
+		ctx:       sync.Map{},
 	}
 }
 

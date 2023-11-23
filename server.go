@@ -3,6 +3,7 @@ package webreal
 import (
 	"github.com/gorilla/websocket"
 	"net/http"
+	"sync"
 )
 
 type Server struct {
@@ -17,6 +18,9 @@ func NewServer(handler Handler, hub *SubscriptionHub, c *Config) *Server {
 		hub:     hub,
 		handler: handler,
 		upgrader: websocket.Upgrader{
+			ReadBufferSize:  256,
+			WriteBufferSize: 256,
+			WriteBufferPool: &sync.Pool{},
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},

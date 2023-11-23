@@ -37,7 +37,7 @@ func main() {
 			select {
 			case <-tik.C:
 				for i := 0; i < 10; i++ {
-					hub.Publish("hello", []byte("hello"))
+					hub.Publish("hello", []byte("hellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohello"))
 				}
 			}
 		}
